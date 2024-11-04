@@ -81,7 +81,7 @@ def change_qty(item_name, qty):
 def check_out():
     main_shadow_root = driver.find_element(By.XPATH,"//shop-app    ").shadow_root
     child_root = main_shadow_root.find_element(By.CSS_SELECTOR,"shop-cart.iron-selected").shadow_root
-    child_root1 = child_root.find_element(By.CSS_SELECTOR, "div > div:nth-child(2) > div.checkout-box > shop-button").click()
+    child_root.find_element(By.CSS_SELECTOR, "div > div:nth-child(2) > div.checkout-box > shop-button").click()
 def get_checkout_dtls(file_name):
     file_data = pd.read_excel(file_name)
     print(file_data)
