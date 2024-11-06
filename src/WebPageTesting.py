@@ -4,6 +4,7 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import ElementNotInteractableException,StaleElementReferenceException,ElementClickInterceptedException
 import time
 import re
 import pandas as pd
@@ -77,11 +78,20 @@ def change_qty(item_name, qty):
             main_shadow_root = child_root1.find_element(By.CSS_SELECTOR,"div > div:nth-child(2) > div.list > shop-cart-item:nth-child("+str(cnt)+")").shadow_root
             select = Select(WebDriverWait(main_shadow_root, 10).until(EC.element_to_be_clickable((By.ID, "quantitySelect"))))
             select.select_by_visible_text(qty)
-        time.sleep(3)
+    time.sleep(3)
 def check_out():
-    main_shadow_root = driver.find_element(By.XPATH,"//shop-app    ").shadow_root
-    child_root = main_shadow_root.find_element(By.CSS_SELECTOR,"shop-cart.iron-selected").shadow_root
-    child_root.find_element(By.CSS_SELECTOR, "div > div:nth-child(2) > div.checkout-box > shop-button").click()
+    try:
+        main_shadow_root = driver.find_element(By.XPATH,"//shop-app    ").shadow_root
+        child_root = main_shadow_root.find_element(By.CSS_SELECTOR,"shop-cart.iron-selected").shadow_root
+        child_root.find_element(By.CSS_SELECTOR, "div > div:nth-child(2) > div.checkout-box > shop-button").click()
+        return True
+    except ElementNotInteractableException:
+        main_shadow_root = driver.find_element(By.XPATH,"//shop-app    ").shadow_root
+        child_root = main_shadow_root.find_element(By.CLASS_NAME,"logo")
+        child_root1 = child_root.find_element(By.CSS_SELECTOR,"a[href='/']")
+        child_root1.click()
+        time.sleep(3)
+        return False
 def get_checkout_dtls(file_name):
     file_data = pd.read_excel(file_name)
     print(file_data)
@@ -90,6 +100,24 @@ def get_checkout_dtls(file_name):
     for i in file_data:
         dict[i] = file_data[i][cnt]
     return dict
+def delete_from_basket(item_name):
+    try:
+        main_shadow_root = driver.find_element(By.XPATH,"//shop-app    ").shadow_root
+        child_root = main_shadow_root.find_element(By.CSS_SELECTOR,"shop-cart.iron-selected").shadow_root
+        child_root1 = child_root.find_element(By.CSS_SELECTOR, "div.main-frame")
+        child_root2 = child_root1.find_elements(By.TAG_NAME,"shop-cart-item")
+        cnt = 0
+        for i in child_root2:
+            cnt = cnt + 1
+            if re.search(item_name,i.text):
+                child_root1 = child_root1.find_element(By.CSS_SELECTOR, "div.subsection > div.list")
+                main_shadow_root = child_root1.find_element(By.CSS_SELECTOR,"div > div:nth-child(2) > div.list > shop-cart-item:nth-child("+str(cnt)+")").shadow_root
+                main_shadow_root.find_element(By.CSS_SELECTOR,"div > div.detail > paper-icon-button").click()
+                #select = Select(WebDriverWait(main_shadow_root, 10).until(EC.element_to_be_clickable((By.ID, "quantitySelect"))))
+                #select.select_by_visible_text(qty)
+        time.sleep(3)
+    except StaleElementReferenceException:
+        time.sleep(3)
 def upload_dtls(dict):
     main_shadow_root = driver.find_element(By.XPATH,"//shop-app    ").shadow_root
     child_root = main_shadow_root.find_element(By.CSS_SELECTOR,"shop-checkout.iron-selected").shadow_root
@@ -131,21 +159,24 @@ def upload_dtls(dict):
             child_root1.find_element(By.ID,"ccCVV").send_keys(int(dict[i]))
     time.sleep(3)
 def place_order_and_finish():
-    main_shadow_root = driver.find_element(By.XPATH,"//shop-app    ").shadow_root
-    child_root = main_shadow_root.find_element(By.CSS_SELECTOR,"shop-checkout.iron-selected").shadow_root
-    child_root1 = child_root.find_element(By.CSS_SELECTOR, "div.main-frame")
-    child_root1.find_element(By.ID,"submitBox").click()
-    time.sleep(3)
-    main_shadow_root = driver.find_element(By.XPATH,"//shop-app    ").shadow_root
-    child_root = main_shadow_root.find_element(By.CSS_SELECTOR,"shop-checkout.iron-selected").shadow_root
-    child_root1 = child_root.find_element(By.CSS_SELECTOR, "div.main-frame")
-    child_root1.find_element(By.CSS_SELECTOR,"a[href='/']").click()
-
+    try:
+        main_shadow_root = driver.find_element(By.XPATH,"//shop-app    ").shadow_root
+        child_root = main_shadow_root.find_element(By.CSS_SELECTOR,"shop-checkout.iron-selected").shadow_root
+        child_root1 = child_root.find_element(By.CSS_SELECTOR, "div.main-frame")
+        child_root1.find_element(By.ID,"submitBox").click()
+        time.sleep(3)
+        main_shadow_root = driver.find_element(By.XPATH,"//shop-app    ").shadow_root
+        child_root = main_shadow_root.find_element(By.CSS_SELECTOR,"shop-checkout.iron-selected").shadow_root
+        child_root1 = child_root.find_element(By.CSS_SELECTOR, "div.main-frame")
+        child_root1.find_element(By.CSS_SELECTOR,"a[href='/']").click()
+    except ElementClickInterceptedException:
+        child_root1.find_element(By.CSS_SELECTOR,"a[href='/']").click()
 # Initializing the browser
 chrome_options = Options()
 chrome_options.add_experimental_option("detach",True)
 driver = webdriver.Chrome(options=chrome_options)
 driver.get("https://shop.polymer-project.org/")
+#Choose Items
 #Choose Men's wear
 outerwear = '/list/mens_outerwear'
 item_link = '/detail/mens_outerwear/Men+s+Tech+Shell+Full-Zip'
@@ -164,18 +195,39 @@ choose_items(outerwear,
              item_link,
              item_size,
              item_qty)
+
+outerwear = '/list/mens_outerwear'
+item_link = '/detail/mens_outerwear/Anvil+L+S+Crew+Neck+-+Grey'
+item_size = 'L'
+item_qty = '3'
+choose_items(outerwear,
+            item_link,
+            item_size,
+            item_qty)
+
 #Viw Basket
 view_basket()
-#Change Ladies wear qty
+#Change qty
 item_name = "Ladies Modern Stretch Full Zip"
 new_qty = '1'
 change_qty(item_name, new_qty)
+
+item_name = "Anvil L/S Crew Neck - Grey"
+new_qty = '5'
+change_qty(item_name, new_qty)
+
+#Delete item from cart
+item_name = "Men's Tech Shell Full-Zip"
+delete_from_basket(item_name)
+
 #Checkout
-check_out()
-#Read Excel File
-dict = {}
-dict = get_checkout_dtls("Checkoutdetails.xlsx")
-#Upload details
-upload_dtls(dict)
-#Place Order and Finish
-place_order_and_finish()
+if check_out():
+    #Read Excel File
+    dict = {}
+    dict = get_checkout_dtls("Checkoutdetails.xlsx")
+
+    #Upload details
+    upload_dtls(dict)
+
+    #Place Order and Finish
+    place_order_and_finish()
