@@ -171,6 +171,7 @@ def place_order_and_finish():
         child_root1.find_element(By.CSS_SELECTOR,"a[href='/']").click()
     except ElementClickInterceptedException:
         child_root1.find_element(By.CSS_SELECTOR,"a[href='/']").click()
+#Main Logic Starts from Here
 # Initializing the browser
 chrome_options = Options()
 chrome_options.add_experimental_option("detach",True)
